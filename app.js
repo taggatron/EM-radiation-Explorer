@@ -169,9 +169,10 @@ function drawRadioFrame(now) {
   radioLast = now;
   radioPhase += dt * radioFrequency; // AC frequency controlled by tuner
 
-  const rect = radioCanvas.getBoundingClientRect();
-  const w = rect.width;
-  const h = rect.height;
+  // Use the intrinsic canvas size (already scaled by radioDpr) and
+  // convert back to CSS pixels so drawing coordinates line up.
+  const w = radioCanvas.width / radioDpr;
+  const h = radioCanvas.height / radioDpr;
   radioCtx.clearRect(0, 0, w, h);
 
   // background gradient
@@ -296,9 +297,9 @@ function drawFrame(now) {
   const dt = (now - lastTime) / 1000;
   lastTime = now;
 
-  const rect = canvas.getBoundingClientRect();
-  const w = rect.width;
-  const h = rect.height;
+  // Atom canvas: also use intrinsic size / dpr so we match resizeCanvas.
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
   ctx.clearRect(0, 0, w, h);
 
   const cx = w / 2;
