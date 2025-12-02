@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Atomic Line Spectra Visualizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="title-block">
+        <h1>Electromagnetic Radiation Explorer</h1>
+        <p>Visual simulations for different regions of the EM spectrum.</p>
+      </div>
+      <div class="controls main-controls" id="mainControls">
+        <span class="badge">Pick a region to explore</span>
+      </div>
+      <div class="controls sim-controls" id="simControls" hidden>
+        <button id="backToMenu" class="pill-button">← Back to overview</button>
+        <div class="sim-title-group">
+          <h2 id="simTitle">Simulation</h2>
+          <p id="simSubtitle" class="sim-subtitle"></p>
+        </div>
+        <div class="sim-extra" id="simExtra"></div>
+      </div>
+    </header>
+
+    <main id="menuView" class="menu-grid">
+      <article class="wave-card" data-sim="radio">
+        <div class="wave-chip">Radio</div>
+        <h2>Radio Antennas</h2>
+        <p>See electrons in a transmitting antenna vibrate and launch long-wavelength radio waves to a receiving antenna.</p>
+        <div class="wave-spectrum-bar radio"></div>
+      </article>
+
+      <article class="wave-card" data-sim="microwave">
+        <div class="wave-chip">Microwave</div>
+        <h2>Microwave Heating</h2>
+        <p>Imagine water molecules rotating and warming under microwave radiation. (Conceptual animation placeholder.)</p>
+        <div class="wave-spectrum-bar microwave"></div>
+      </article>
+
+      <article class="wave-card" data-sim="visible">
+        <div class="wave-chip">Visible</div>
+        <h2>Atomic Line Spectra</h2>
+        <p>Electrons jump between energy levels, absorbing and emitting specific colors of visible light.</p>
+        <div class="wave-spectrum-bar visible"></div>
+      </article>
+
+      <article class="wave-card" data-sim="xray">
+        <div class="wave-chip">X-ray</div>
+        <h2>X‑ray Imaging</h2>
+        <p>High‑energy photons passing through soft tissue but being absorbed more strongly by bone. (Conceptual animation placeholder.)</p>
+        <div class="wave-spectrum-bar xray"></div>
+      </article>
+    </main>
+
+    <main id="simView" class="layout" hidden>
+      <section class="atom-panel" id="visibleSimPanel" hidden>
+        <div class="sim-panel-header">
+          <div class="controls inline-controls">
+            <label class="select-label">
+              Element
+              <select id="elementSelect">
+                <option value="H">Hydrogen (H)</option>
+                <option value="He">Helium (He)</option>
+                <option value="Na">Sodium (Na)</option>
+              </select>
+            </label>
+            <label class="select-label">
+              Mode
+              <select id="modeSelect">
+                <option value="emission">Emission</option>
+                <option value="absorption">Absorption</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="atom-viewport">
+          <canvas id="atomCanvas"></canvas>
+        </div>
+        <p class="hint">Watch electrons jump between shells and emit / absorb colored light.</p>
+      </section>
+
+      <section class="spectrum-panel" id="visibleSpectrumPanel" hidden>
+        <h2>Line Spectrum</h2>
+        <div class="spectrum-wrapper">
+          <div class="spectrum-label">Wavelength →</div>
+          <div id="spectrum" class="spectrum"></div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </section>
+
+      <section class="atom-panel" id="radioSimPanel" hidden>
+        <div class="radio-layout">
+          <div class="radio-column">
+            <h2>Transmitting Antenna</h2>
+            <canvas id="radioCanvas"></canvas>
+            <p class="hint">AC current shakes electrons up and down, launching radio waves.</p>
+          </div>
+          <div class="radio-column">
+            <h2>Receiving Antenna</h2>
+            <div class="receiver-indicator" id="receiverIndicator">
+              <div class="receiver-dot"></div>
+            </div>
+            <p class="hint">Incoming waves drive electrons in the receiver, inducing a signal.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span>Educational visualizations – not to scale, colors approximate.</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
