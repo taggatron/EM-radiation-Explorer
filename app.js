@@ -108,6 +108,7 @@ function resizeCanvas() {
 }
 
 window.addEventListener("resize", resizeCanvas);
+// Initial sizing; will also be called again when the visible sim is shown.
 resizeCanvas();
 
 const MAX_SHELLS = 4;
@@ -455,19 +456,24 @@ function showSimulation(kind) {
   if (kind === "visible") {
     visibleSimPanel.hidden = false;
     visibleSpectrumPanel.hidden = false;
-  } else if (kind === "radio") {
-    radioSimPanel.hidden = false;
-  }
 
-  if (kind === "visible") {
     simTitleEl.textContent = "Visible Light: Atomic Line Spectra";
     simSubtitleEl.textContent = "Electrons in atoms absorb and emit discrete photon energies.";
     simExtraEl.innerHTML = "Try switching elements and toggling between emission and absorption.";
     currentElementKey = elementSelect.value;
     renderSpectrum(elementSelect.value, modeSelect.value);
+
+    // Ensure the atom canvas is correctly sized now that the panel is visible
+    if (typeof resizeCanvas === "function") {
+      resizeCanvas();
+    }
   } else if (kind === "radio") {
+    radioSimPanel.hidden = false;
+
     simTitleEl.textContent = "Radio Waves: Antenna Transmission";
     simSubtitleEl.textContent = "An AC current makes electrons in the transmitter vibrate, launching long-wavelength radio waves.";
+
+    // Build tuner UI
     simExtraEl.innerHTML = `
       <label style="display:inline-flex;align-items:center;gap:4px;">
         Tuner
@@ -485,7 +491,13 @@ function showSimulation(kind) {
         tunerLabel.textContent = `Station: ${val}`;
       });
     }
+
+    // Ensure the radio canvas is correctly sized now that the panel is visible
+    if (typeof resizeRadioCanvas === "function") {
+      resizeRadioCanvas();
+    }
   } else {
+    // Fallback for unimplemented sims (microwave, x-ray)
     simTitleEl.textContent = "Simulation";
     simSubtitleEl.textContent = "";
     simExtraEl.textContent = "";

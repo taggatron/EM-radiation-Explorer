@@ -1,11 +1,14 @@
-# Atomic Line Spectra Visualizer
+# Electromagnetic Radiation Explorer
 
-A small static web app that visualizes approximate absorption and emission line spectra for simple atoms (H, He, Na). It also shows an animated Bohr-style atom with electrons jumping between shells while emitting or absorbing colorful EM wavefronts.
+A small static web app for exploring simple visualizations of electromagnetic radiation. It includes:
+
+- An atomic line spectra simulator for visible light (H, He, Na)
+- A radio antenna simulator showing electrons vibrating in a transmitting antenna and waves being picked up by a receiver
 
 ## Tech Stack
 
 - Plain HTML, CSS, and JavaScript (no build step)
-- Canvas for the atom + electron animation
+- Canvas for the atom + electron and radio antenna animations
 
 ## Running the app
 
@@ -27,10 +30,25 @@ Then visit `http://localhost:8000` in your browser.
 
 ## Features
 
-- Choose between Hydrogen, Helium, and Sodium.
-- Toggle between emission and absorption modes.
-- Animated electrons jumping between energy levels.
-- Colorful EM wavefronts corresponding to photon emission/absorption.
-- Bright, modern styling with glassmorphism and neon-like spectra lines.
+### Overview screen
 
-Note: Wavelengths and colors are approximate and for educational visualization only, not precise spectroscopy.
+- Card-based menu for different EM regions (Radio, Microwave, Visible, X-ray)
+- Each card opens a dedicated simulation or conceptual view
+
+### Visible: Atomic Line Spectra
+
+- Choose between Hydrogen, Helium, and Sodium
+- Toggle between emission and absorption modes
+- Animated Bohr-style atom with electrons jumping between shells
+- Colored line spectrum showing approximate visible wavelengths for each element
+
+### Radio: Antenna Transmission
+
+- Transmitting antenna with a column of electrons oscillating up and down
+- Travelling sinusoidal radio waves launched from the transmitter
+- Receiving antenna with a visible wire and electron that vibrates with the incoming waves
+
+### Notes
+
+- Wavelengths, frequencies, and colors are approximate and purely for educational visualization
+- None of the animations are to physical scale
