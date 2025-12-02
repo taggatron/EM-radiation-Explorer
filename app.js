@@ -49,6 +49,7 @@ const legendEl = document.getElementById("legend");
 const visibleSimPanel = document.getElementById("visibleSimPanel");
 const visibleSpectrumPanel = document.getElementById("visibleSpectrumPanel");
 const radioSimPanel = document.getElementById("radioSimPanel");
+const receiverElectronEl = document.getElementById("receiverElectron");
 
 // Spectrum rendering --------------------------------------------------------
 
@@ -138,19 +139,25 @@ let radioDpr = window.devicePixelRatio || 1;
 
 function resizeRadioCanvas() {
   if (!radioCanvas || !radioCtx) return;
-  const rect = radioCanvas.getBoundingClientRect();
-  radioCanvas.width = rect.width * radioDpr;
-  radioCanvas.height = rect.height * radioDpr;
+  // Use offsetWidth/offsetHeight so we always get a non-zero size even
+  // before the browser has painted the canvas bounds.
+  const width = radioCanvas.offsetWidth || radioCanvas.getBoundingClientRect().width;
+  const height = radioCanvas.offsetHeight || 220;
+  radioCanvas.width = width * radioDpr;
+  radioCanvas.height = height * radioDpr;
   radioCtx.setTransform(radioDpr, 0, 0, radioDpr, 0, 0);
 }
 
 if (radioCanvas) {
   window.addEventListener("resize", resizeRadioCanvas);
+  // Defer resize until after layout so the canvas gets a real size.
+  window.addEventListener("load", resizeRadioCanvas);
   resizeRadioCanvas();
 }
 
 let radioPhase = 0;
 let radioLast = performance.now();
+let radioFrequency = 4; // base angular frequency factor, tuned via tuner
 
 function drawRadioFrame(now) {
   if (!radioCanvas || !radioCtx) {
@@ -160,7 +167,7 @@ function drawRadioFrame(now) {
 
   const dt = (now - radioLast) / 1000;
   radioLast = now;
-  radioPhase += dt * 4; // AC frequency
+  radioPhase += dt * radioFrequency; // AC frequency controlled by tuner
 
   const rect = radioCanvas.getBoundingClientRect();
   const w = rect.width;
@@ -234,6 +241,14 @@ function drawRadioFrame(now) {
     else radioCtx.lineTo(x, y);
   }
   radioCtx.stroke();
+
+  // move receiver electron in its own DOM container to match incoming wave
+  if (receiverElectronEl) {
+    const receiverRect = receiverElectronEl.parentElement.getBoundingClientRect();
+    const recvH = receiverRect.height;
+    const offset = Math.sin(radioPhase * 2) * (recvH * 0.25);
+    receiverElectronEl.style.transform = `translateY(${offset}px)`;
+  }
 
   requestAnimationFrame(drawRadioFrame);
 }
@@ -446,13 +461,29 @@ function showSimulation(kind) {
   if (kind === "visible") {
     simTitleEl.textContent = "Visible Light: Atomic Line Spectra";
     simSubtitleEl.textContent = "Electrons in atoms absorb and emit discrete photon energies.";
-    simExtraEl.textContent = "Try switching elements and toggling between emission and absorption.";
+    simExtraEl.innerHTML = "Try switching elements and toggling between emission and absorption.";
     currentElementKey = elementSelect.value;
     renderSpectrum(elementSelect.value, modeSelect.value);
   } else if (kind === "radio") {
     simTitleEl.textContent = "Radio Waves: Antenna Transmission";
     simSubtitleEl.textContent = "An AC current makes electrons in the transmitter vibrate, launching long-wavelength radio waves.";
-    simExtraEl.textContent = "Watch how the receiver lights up as the wave arrives.";
+    simExtraEl.innerHTML = `
+      <label style="display:inline-flex;align-items:center;gap:4px;">
+        Tuner
+        <input id="tuner" type="range" min="1" max="9" step="1" value="4" style="width:120px;" />
+      </label>
+      <span id="tunerLabel">Station: 4</span>
+    `;
+
+    const tuner = document.getElementById("tuner");
+    const tunerLabel = document.getElementById("tunerLabel");
+    if (tuner && tunerLabel) {
+      tuner.addEventListener("input", () => {
+        const val = Number(tuner.value);
+        radioFrequency = 2 + val; // map slider to pleasant frequency range
+        tunerLabel.textContent = `Station: ${val}`;
+      });
+    }
   } else {
     simTitleEl.textContent = "Simulation";
     simSubtitleEl.textContent = "";
