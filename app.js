@@ -38,6 +38,7 @@ const backToMenuBtn = document.getElementById("backToMenu");
 const simTitleEl = document.getElementById("simTitle");
 const simSubtitleEl = document.getElementById("simSubtitle");
 const simExtraEl = document.getElementById("simExtra");
+const simTitleBelow = document.getElementById("simTitleBelow");
 
 // Visible light (atomic spectra) controls
 const elementSelect = document.getElementById("elementSelect");
@@ -50,6 +51,12 @@ const visibleSimPanel = document.getElementById("visibleSimPanel");
 const visibleSpectrumPanel = document.getElementById("visibleSpectrumPanel");
 const radioSimPanel = document.getElementById("radioSimPanel");
 const receiverElectronEl = document.getElementById("receiverElectron");
+const microwaveSimPanel = document.getElementById("microwaveSimPanel");
+const xraySimPanel = document.getElementById("xraySimPanel");
+// Visible-light inline controls (Element/Mode) live inside the visible panel by default.
+const visibleInlineControls = document.querySelector("#visibleSimPanel .inline-controls");
+const visibleControlsHome = visibleInlineControls ? visibleInlineControls.parentElement : null;
+const visiblePanelHeader = document.querySelector("#visibleSimPanel .sim-panel-header");
 
 // Spectrum rendering --------------------------------------------------------
 
@@ -257,6 +264,216 @@ function drawRadioFrame(now) {
 
 requestAnimationFrame(drawRadioFrame);
 
+// Microwave simulation ------------------------------------------------------
+
+const microwaveCanvas = document.getElementById("microwaveCanvas");
+const microwaveCtx = microwaveCanvas ? microwaveCanvas.getContext("2d") : null;
+let microwaveDpr = window.devicePixelRatio || 1;
+let microwavePhase = 0;
+let microwaveLast = performance.now();
+let microwavePower = 5; // 1..10 UI slider, affects speed and intensity
+
+function resizeMicrowaveCanvas() {
+  if (!microwaveCanvas || !microwaveCtx) return;
+  const parent = microwaveCanvas.parentElement;
+  const rect = parent ? parent.getBoundingClientRect() : microwaveCanvas.getBoundingClientRect();
+  const width = rect.width || 300;
+  const height = rect.height || 220;
+  microwaveCanvas.width = width * microwaveDpr;
+  microwaveCanvas.height = height * microwaveDpr;
+  microwaveCtx.setTransform(microwaveDpr, 0, 0, microwaveDpr, 0, 0);
+}
+
+if (microwaveCanvas) {
+  window.addEventListener("resize", resizeMicrowaveCanvas);
+  window.addEventListener("load", resizeMicrowaveCanvas);
+  resizeMicrowaveCanvas();
+}
+
+function drawMicrowaveFrame(now) {
+  if (!microwaveCanvas || !microwaveCtx) {
+    requestAnimationFrame(drawMicrowaveFrame);
+    return;
+  }
+
+  const dt = (now - microwaveLast) / 1000;
+  microwaveLast = now;
+  microwavePhase += dt * (1 + microwavePower * 0.8);
+
+  const w = microwaveCanvas.width / microwaveDpr;
+  const h = microwaveCanvas.height / microwaveDpr;
+  microwaveCtx.clearRect(0, 0, w, h);
+
+  // cavity background
+  const grad = microwaveCtx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, "#020617");
+  grad.addColorStop(1, "#020617");
+  microwaveCtx.fillStyle = grad;
+  microwaveCtx.fillRect(0, 0, w, h);
+
+  // draw a grid of water molecules as small dipoles
+  const rows = 3;
+  const cols = 7;
+  const spacingX = w / (cols + 1);
+  const spacingY = h / (rows + 1);
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const cx = spacingX * (col + 1);
+      const cy = spacingY * (row + 1);
+
+      const localPhase = microwavePhase + (row * 0.6 + col * 0.4);
+      const angle = Math.sin(localPhase) * (0.5 + microwavePower * 0.06); // dipole rotation
+
+      microwaveCtx.save();
+      microwaveCtx.translate(cx, cy);
+      microwaveCtx.rotate(angle);
+
+      // oxygen
+      const oxyGrad = microwaveCtx.createRadialGradient(0, 0, 0, 0, 0, 13);
+      oxyGrad.addColorStop(0, "#0ea5e9");
+      oxyGrad.addColorStop(1, "#022c22");
+      microwaveCtx.fillStyle = oxyGrad;
+      microwaveCtx.beginPath();
+      microwaveCtx.arc(0, 0, 11, 0, Math.PI * 2);
+      microwaveCtx.fill();
+
+      // hydrogens
+      const armLen = 20;
+      for (let s = -1; s <= 1; s += 2) {
+        const hx = Math.cos(0.9 * s) * armLen;
+        const hy = Math.sin(0.9 * s) * armLen;
+
+        microwaveCtx.strokeStyle = "rgba(148,163,184,0.7)";
+        microwaveCtx.lineWidth = 2;
+        microwaveCtx.beginPath();
+        microwaveCtx.moveTo(0, 0);
+        microwaveCtx.lineTo(hx, hy);
+        microwaveCtx.stroke();
+
+        const hGrad = microwaveCtx.createRadialGradient(hx, hy, 0, hx, hy, 9);
+        hGrad.addColorStop(0, "#22c55e");
+        hGrad.addColorStop(1, "#052e16");
+        microwaveCtx.fillStyle = hGrad;
+        microwaveCtx.beginPath();
+        microwaveCtx.arc(hx, hy, 6, 0, Math.PI * 2);
+        microwaveCtx.fill();
+      }
+
+      microwaveCtx.restore();
+    }
+  }
+
+  // standing-wave like field stripes
+  const bandAlpha = Math.min(0.12 + microwavePower * 0.06, 0.9);
+  microwaveCtx.globalAlpha = 1;
+  microwaveCtx.fillStyle = `rgba(34,197,94,${bandAlpha.toFixed(2)})`;
+  const bandCount = 6;
+  for (let i = 0; i < bandCount; i++) {
+    const t = i / bandCount;
+    const offset = Math.sin(microwavePhase + t * Math.PI * 2) * (8 + microwavePower * 2.5);
+    const y = t * h + offset;
+    const bandH = 8 + microwavePower * 1.2;
+    microwaveCtx.fillRect(0, y, w, bandH);
+  }
+
+  requestAnimationFrame(drawMicrowaveFrame);
+}
+
+requestAnimationFrame(drawMicrowaveFrame);
+
+// X-ray simulation ---------------------------------------------------------
+
+const xrayCanvas = document.getElementById("xrayCanvas");
+const xrayCtx = xrayCanvas ? xrayCanvas.getContext("2d") : null;
+let xrayDpr = window.devicePixelRatio || 1;
+let xrayLast = performance.now();
+let xrayPhase = 0;
+
+function resizeXrayCanvas() {
+  if (!xrayCanvas || !xrayCtx) return;
+  const parent = xrayCanvas.parentElement;
+  const rect = parent ? parent.getBoundingClientRect() : xrayCanvas.getBoundingClientRect();
+  const width = rect.width || 300;
+  const height = rect.height || 220;
+  xrayCanvas.width = width * xrayDpr;
+  xrayCanvas.height = height * xrayDpr;
+  xrayCtx.setTransform(xrayDpr, 0, 0, xrayDpr, 0, 0);
+}
+
+if (xrayCanvas) {
+  window.addEventListener("resize", resizeXrayCanvas);
+  window.addEventListener("load", resizeXrayCanvas);
+  resizeXrayCanvas();
+}
+
+function drawXrayFrame(now) {
+  if (!xrayCanvas || !xrayCtx) {
+    requestAnimationFrame(drawXrayFrame);
+    return;
+  }
+
+  const dt = (now - xrayLast) / 1000;
+  xrayLast = now;
+  xrayPhase += dt * 3.5;
+
+  const w = xrayCanvas.width / xrayDpr;
+  const h = xrayCanvas.height / xrayDpr;
+  xrayCtx.clearRect(0, 0, w, h);
+
+  // background soft tissue
+  const bg = xrayCtx.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, "#020617");
+  bg.addColorStop(1, "#020617");
+  xrayCtx.fillStyle = bg;
+  xrayCtx.fillRect(0, 0, w, h);
+
+  // simple rib-like arcs (higher absorption)
+  xrayCtx.strokeStyle = "rgba(226,232,240,0.7)";
+  xrayCtx.lineWidth = 3;
+  const ribs = 6;
+  for (let i = 0; i < ribs; i++) {
+    const t = (i + 1) / (ribs + 1);
+    const y = t * h * 0.85 + h * 0.05;
+    xrayCtx.beginPath();
+    xrayCtx.moveTo(w * 0.2, y);
+    xrayCtx.quadraticCurveTo(w * 0.5, y - 30, w * 0.8, y);
+    xrayCtx.stroke();
+  }
+
+  // faint spine
+  xrayCtx.strokeStyle = "rgba(148,163,184,0.6)";
+  xrayCtx.lineWidth = 4;
+  xrayCtx.beginPath();
+  xrayCtx.moveTo(w * 0.5, h * 0.15);
+  xrayCtx.lineTo(w * 0.5, h * 0.85);
+  xrayCtx.stroke();
+
+  // X-ray beam from left
+  const beamCount = 24;
+  for (let i = 0; i < beamCount; i++) {
+    const t = i / (beamCount - 1);
+    const y = t * h;
+    const intensity = 0.25 + 0.75 * Math.exp(-Math.abs(Math.sin(y * 0.03 + xrayPhase)) * 1.6);
+
+    const startAlpha = 0.55 * intensity;
+    const endAlpha = 0.1 * intensity;
+    const gradBeam = xrayCtx.createLinearGradient(0, y, w, y);
+    gradBeam.addColorStop(0, `rgba(248,250,252,${startAlpha.toFixed(2)})`);
+    gradBeam.addColorStop(1, `rgba(148,163,184,${endAlpha.toFixed(2)})`);
+    xrayCtx.strokeStyle = gradBeam;
+    xrayCtx.lineWidth = 2;
+    xrayCtx.beginPath();
+    xrayCtx.moveTo(0, y);
+    xrayCtx.lineTo(w, y);
+    xrayCtx.stroke();
+  }
+
+  requestAnimationFrame(drawXrayFrame);
+}
+
+requestAnimationFrame(drawXrayFrame);
+
 function triggerTransition(elementKey, mode) {
   const data = ELEMENT_DATA[elementKey];
   if (!data) return;
@@ -436,10 +653,19 @@ function showMenu() {
   simView.hidden = true;
   mainControls.hidden = false;
   simControls.hidden = true;
+  if (simTitleBelow) simTitleBelow.hidden = true;
+
+  // Return visible-light controls to their original header container
+  if (visibleInlineControls && visibleControlsHome && visibleInlineControls.parentElement !== visibleControlsHome) {
+    visibleControlsHome.appendChild(visibleInlineControls);
+  }
+  if (visiblePanelHeader) visiblePanelHeader.hidden = false;
 
   visibleSimPanel.hidden = true;
   visibleSpectrumPanel.hidden = true;
   radioSimPanel.hidden = true;
+  if (microwaveSimPanel) microwaveSimPanel.hidden = true;
+  if (xraySimPanel) xraySimPanel.hidden = true;
 }
 
 function showSimulation(kind) {
@@ -447,11 +673,20 @@ function showSimulation(kind) {
   simView.hidden = false;
   mainControls.hidden = true;
   simControls.hidden = false;
+  if (simTitleBelow) simTitleBelow.hidden = false;
+
+  // By default, put visible-light controls back in their home container
+  if (visibleInlineControls && visibleControlsHome && visibleInlineControls.parentElement !== visibleControlsHome) {
+    visibleControlsHome.appendChild(visibleInlineControls);
+  }
+  if (visiblePanelHeader) visiblePanelHeader.hidden = false;
 
   // hide everything first, then enable just the requested simulation panels
   visibleSimPanel.hidden = true;
   visibleSpectrumPanel.hidden = true;
   radioSimPanel.hidden = true;
+    if (microwaveSimPanel) microwaveSimPanel.hidden = true;
+    if (xraySimPanel) xraySimPanel.hidden = true;
 
   if (kind === "visible") {
     visibleSimPanel.hidden = false;
@@ -459,7 +694,16 @@ function showSimulation(kind) {
 
     simTitleEl.textContent = "Visible Light: Atomic Line Spectra";
     simSubtitleEl.textContent = "Electrons in atoms absorb and emit discrete photon energies.";
-    simExtraEl.innerHTML = "Try switching elements and toggling between emission and absorption.";
+    // Move element/mode controls below the simulation cards for consistency
+    simExtraEl.innerHTML = "";
+    if (visibleInlineControls) {
+      simExtraEl.appendChild(visibleInlineControls);
+      if (visiblePanelHeader) visiblePanelHeader.hidden = true;
+    }
+    const tip = document.createElement("span");
+    tip.textContent = "Tip: switch element and emission/absorption.";
+    tip.style.opacity = 0.8;
+    simExtraEl.appendChild(tip);
     currentElementKey = elementSelect.value;
     renderSpectrum(elementSelect.value, modeSelect.value);
 
@@ -496,6 +740,42 @@ function showSimulation(kind) {
     if (typeof resizeRadioCanvas === "function") {
       resizeRadioCanvas();
     }
+  } else if (kind === "microwave") {
+    if (microwaveSimPanel) microwaveSimPanel.hidden = false;
+
+    simTitleEl.textContent = "Microwaves: Molecular Rotation & Heating";
+    simSubtitleEl.textContent = "Microwave fields make polar water molecules rotate and jostle.";
+    simExtraEl.innerHTML = `
+      <label style="display:inline-flex;align-items:center;gap:4px;">
+        Power
+        <input id="mwPower" type="range" min="1" max="10" step="1" value="${microwavePower}" style="width:120px;" />
+      </label>
+      <span id="mwPowerLabel">Level: ${microwavePower}</span>
+    `;
+
+    const mwPower = document.getElementById("mwPower");
+    const mwPowerLabel = document.getElementById("mwPowerLabel");
+    if (mwPower && mwPowerLabel) {
+      mwPower.addEventListener("input", () => {
+        microwavePower = Number(mwPower.value);
+        mwPowerLabel.textContent = `Level: ${microwavePower}`;
+      });
+    }
+
+    if (typeof resizeMicrowaveCanvas === "function") {
+      // Wait one frame to ensure layout has updated after unhide
+      requestAnimationFrame(() => resizeMicrowaveCanvas());
+    }
+  } else if (kind === "xray") {
+    if (xraySimPanel) xraySimPanel.hidden = false;
+
+    simTitleEl.textContent = "X-rays: Differential Absorption";
+    simSubtitleEl.textContent = "Dense bone absorbs more X-rays than soft tissue.";
+    simExtraEl.textContent = "Bright ribs and spine show where fewer photons get through.";
+
+    if (typeof resizeXrayCanvas === "function") {
+      requestAnimationFrame(() => resizeXrayCanvas());
+    }
   } else {
     // Fallback for unimplemented sims (microwave, x-ray)
     simTitleEl.textContent = "Simulation";
@@ -511,9 +791,8 @@ showMenu();
 document.querySelectorAll(".wave-card").forEach((card) => {
   card.addEventListener("click", () => {
     const kind = card.getAttribute("data-sim");
-    if (kind === "visible" || kind === "radio") {
-      showSimulation(kind);
-    }
+    if (!kind) return;
+    showSimulation(kind);
   });
 });
 
