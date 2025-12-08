@@ -841,6 +841,7 @@ function showMenu() {
   radioSimPanel.hidden = true;
   if (microwaveSimPanel) microwaveSimPanel.hidden = true;
   if (xraySimPanel) xraySimPanel.hidden = true;
+  if (gammaSimPanel) gammaSimPanel.hidden = true;
 }
 
 function showSimulation(kind) {
@@ -862,6 +863,7 @@ function showSimulation(kind) {
   radioSimPanel.hidden = true;
     if (microwaveSimPanel) microwaveSimPanel.hidden = true;
     if (xraySimPanel) xraySimPanel.hidden = true;
+    if (gammaSimPanel) gammaSimPanel.hidden = true;
 
   if (kind === "visible") {
     visibleSimPanel.hidden = false;
