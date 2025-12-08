@@ -730,23 +730,115 @@ function showSimulation(kind) {
     simSubtitleEl.textContent = "An AC current makes electrons in the transmitter vibrate, launching long-wavelength radio waves.";
 
     // Build tuner UI
+    // rotating knob tuner with analog display
     simExtraEl.innerHTML = `
-      <label style="display:inline-flex;align-items:center;gap:4px;">
-        Tuner
-        <input id="tuner" type="range" min="1" max="9" step="1" value="4" style="width:120px;" />
-      </label>
-      <span id="tunerLabel">Station: 4</span>
+      <div class="tuner-wrapper" aria-hidden="false">
+        <div class="tuner-knob" id="tunerKnob" tabindex="0" role="slider" aria-valuemin="1" aria-valuemax="9" aria-valuenow="4" aria-label="Tuner knob">
+          <div class="knob-face" id="knobFace"><div class="knob-indicator"></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">
+          <div class="tuner-label" id="tunerLabel">Station: 4</div>
+          <div class="tuner-display" id="tunerDisplay">88.0 MHz</div>
+        </div>
+      </div>
     `;
 
-    const tuner = document.getElementById("tuner");
-    const tunerLabel = document.getElementById("tunerLabel");
-    if (tuner && tunerLabel) {
-      tuner.addEventListener("input", () => {
-        const val = Number(tuner.value);
-        radioFrequency = 2 + val; // map slider to pleasant frequency range
-        tunerLabel.textContent = `Station: ${val}`;
-      });
+    // Wire up interaction: pointer drag, keyboard and programmatic updates
+    const knob = document.getElementById('tunerKnob');
+    const knobFace = document.getElementById('knobFace');
+    const tunerLabel = document.getElementById('tunerLabel');
+    const tunerDisplay = document.getElementById('tunerDisplay');
+
+    // knob geometry and mapping: angle range -135..+135 maps to values 1..9
+    const minVal = 1, maxVal = 9;
+    const minAngle = -135, maxAngle = 135;
+
+    function valueToAngle(v) {
+      const t = (v - minVal) / (maxVal - minVal);
+      return minAngle + t * (maxAngle - minAngle);
     }
+    function angleToValue(a) {
+      const t = (a - minAngle) / (maxAngle - minAngle);
+      return Math.round(minVal + t * (maxVal - minVal));
+    }
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+    function setKnobValue(v, opts = {}) {
+      const val = clamp(Math.round(v), minVal, maxVal);
+      const ang = valueToAngle(val);
+      if (knobFace) knobFace.style.transform = `rotate(${ang}deg)`;
+      radioFrequency = 2 + val; // maintain existing mapping
+      if (tunerLabel) tunerLabel.textContent = `Station: ${val}`;
+      if (tunerDisplay) {
+        const freq = 88 + (val - 1) * (20 / (maxVal - minVal));
+        tunerDisplay.textContent = `${freq.toFixed(1)} MHz`;
+      }
+      if (knob) knob.setAttribute('aria-valuenow', String(val));
+      if (!opts.silent) {
+        // small visual cue could be added here
+      }
+      return val;
+    }
+
+    // initialize knob
+    setKnobValue(4, { silent: true });
+
+    // pointer drag handling
+    let dragging = false;
+    let rectCenter = null;
+
+    function updateFromPointer(clientX, clientY) {
+      if (!rectCenter) return;
+      const dx = clientX - rectCenter.x;
+      const dy = clientY - rectCenter.y;
+      let ang = Math.atan2(dy, dx) * 180 / Math.PI; // -180..180
+      // convert to knob coordinate where 0deg is to the right; our mapping is already in degrees
+      // normalize ang to -180..180
+      if (ang > 180) ang -= 360;
+      if (ang < -180) ang += 360;
+      // Clamp into our usable arc
+      ang = clamp(ang, minAngle, maxAngle);
+      const val = angleToValue(ang);
+      setKnobValue(val);
+    }
+
+    knob && knob.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      dragging = true;
+      const r = knob.getBoundingClientRect();
+      rectCenter = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      knob.setPointerCapture(ev.pointerId);
+    });
+
+    window.addEventListener('pointermove', (ev) => {
+      if (!dragging) return;
+      updateFromPointer(ev.clientX, ev.clientY);
+    });
+
+    window.addEventListener('pointerup', (ev) => {
+      if (!dragging) return;
+      dragging = false;
+      try { knob.releasePointerCapture(ev.pointerId); } catch (e) {}
+    });
+
+    // keyboard support
+    knob && knob.addEventListener('keydown', (ev) => {
+      const key = ev.key;
+      const current = Number(knob.getAttribute('aria-valuenow') || 4);
+      if (key === 'ArrowLeft' || key === 'ArrowDown') {
+        setKnobValue(current - 1);
+        ev.preventDefault();
+      } else if (key === 'ArrowRight' || key === 'ArrowUp') {
+        setKnobValue(current + 1);
+        ev.preventDefault();
+      } else if (key === 'Home') {
+        setKnobValue(minVal);
+        ev.preventDefault();
+      } else if (key === 'End') {
+        setKnobValue(maxVal);
+        ev.preventDefault();
+      }
+    });
 
     // Ensure the radio canvas is correctly sized now that the panel is visible
     if (typeof resizeRadioCanvas === "function") {
