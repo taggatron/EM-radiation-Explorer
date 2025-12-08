@@ -667,6 +667,11 @@ function showMenu() {
   simControls.hidden = true;
   if (simTitleBelow) simTitleBelow.hidden = true;
 
+  // clear any active/dimmed styling when returning to the menu
+  document.querySelectorAll('.wave-card').forEach(c => {
+    c.classList.remove('active', 'dimmed');
+  });
+
   // Return visible-light controls to their original header container
   if (visibleInlineControls && visibleControlsHome && visibleInlineControls.parentElement !== visibleControlsHome) {
     visibleControlsHome.appendChild(visibleInlineControls);
@@ -947,6 +952,16 @@ document.querySelectorAll(".wave-card").forEach((card) => {
   card.addEventListener("click", () => {
     const kind = card.getAttribute("data-sim");
     if (!kind) return;
+    // mark the clicked card active and dim the others for clear focus
+    document.querySelectorAll('.wave-card').forEach(c => {
+      if (c === card) {
+        c.classList.add('active');
+        c.classList.remove('dimmed');
+      } else {
+        c.classList.add('dimmed');
+        c.classList.remove('active');
+      }
+    });
     showSimulation(kind);
   });
 });

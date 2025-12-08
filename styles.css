@@ -305,7 +305,7 @@ section[hidden],
   box-shadow: var(--shadow-soft);
   cursor: pointer;
   overflow: hidden;
-  transition: transform 160ms ease-out, box-shadow 160ms ease-out, border-color 160ms ease-out;
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out, border-color 160ms ease-out, opacity 180ms ease, filter 180ms ease;
 }
 
 .wave-card:hover {
@@ -358,6 +358,21 @@ section[hidden],
 
 .wave-spectrum-bar.xray {
   background: linear-gradient(90deg, #e5e7eb, #60a5fa);
+}
+
+/* Active card: glow border and lift */
+.wave-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 24px 60px rgba(2,6,23,0.75), 0 0 18px var(--accent-soft);
+  transform: translateY(-6px) scale(1.02);
+  z-index: 3;
+}
+
+/* Dim other cards when one is active */
+.wave-card.dimmed {
+  opacity: 0.42;
+  filter: grayscale(20%) contrast(0.9) saturate(0.7);
+  transform: scale(0.99);
 }
 
 .atom-panel,
