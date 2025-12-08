@@ -42,6 +42,11 @@ Then visit `http://localhost:8000` in your browser.
 - Animated Bohr-style atom with electrons jumping between shells
 - Colored line spectrum showing approximate visible wavelengths for each element
 
+### Gamma: Nuclear De‑excitation (new)
+
+- Simplified nucleus model for large nuclei where protons and neutrons vibrate.
+- Visualises short, bright gamma pulses (not to scale). Use the nucleon slider to change nucleus size and Pause/Play to stop the animation.
+
 ### Radio: Antenna Transmission
 
 - Transmitting antenna with a column of electrons oscillating up and down

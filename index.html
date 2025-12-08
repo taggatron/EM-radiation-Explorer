@@ -49,6 +49,13 @@
         <p>High‑energy photons passing through soft tissue but being absorbed more strongly by bone. (Conceptual animation placeholder.)</p>
         <div class="wave-spectrum-bar xray"></div>
       </article>
+
+      <article class="wave-card" data-sim="gamma">
+        <div class="wave-chip">Gamma</div>
+        <h2>Gamma Radiation</h2>
+        <p>High-energy photons emitted by an excited nucleus. Watch a large nucleus vibrate and emit gamma waves.</p>
+        <div class="wave-spectrum-bar gamma"></div>
+      </article>
     </main>
 
     <main id="simView" class="layout" hidden>
@@ -119,6 +126,14 @@
           <canvas id="xrayCanvas"></canvas>
         </div>
         <p class="hint">X‑rays pass more easily through soft tissue than bone, so fewer photons reach the detector where bones are.</p>
+      </section>
+
+      <section class="atom-panel" id="gammaSimPanel" hidden>
+        <h2>Gamma Radiation</h2>
+        <div class="atom-viewport">
+          <canvas id="gammaCanvas"></canvas>
+        </div>
+        <p class="hint">A simplified nucleus model: protons and neutrons vibrate; when the nucleus relaxs it emits high-energy gamma photons (visualised as short, bright wavefronts).</p>
       </section>
     </main>
 

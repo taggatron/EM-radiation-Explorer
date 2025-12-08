@@ -53,6 +53,7 @@ const radioSimPanel = document.getElementById("radioSimPanel");
 const receiverElectronEl = document.getElementById("receiverElectron");
 const microwaveSimPanel = document.getElementById("microwaveSimPanel");
 const xraySimPanel = document.getElementById("xraySimPanel");
+const gammaSimPanel = document.getElementById("gammaSimPanel");
 // Visible-light inline controls (Element/Mode) live inside the visible panel by default.
 const visibleInlineControls = document.querySelector("#visibleSimPanel .inline-controls");
 const visibleControlsHome = visibleInlineControls ? visibleInlineControls.parentElement : null;
@@ -397,6 +398,8 @@ requestAnimationFrame(drawMicrowaveFrame);
 // X-ray simulation ---------------------------------------------------------
 
 const xrayCanvas = document.getElementById("xrayCanvas");
+// Gamma simulation canvas (nucleus vibration & gamma emission)
+const gammaCanvas = document.getElementById("gammaCanvas");
 const xrayCtx = xrayCanvas ? xrayCanvas.getContext("2d") : null;
 let xrayDpr = window.devicePixelRatio || 1;
 let xrayLast = performance.now();
@@ -485,6 +488,161 @@ function drawXrayFrame(now) {
 }
 
 requestAnimationFrame(drawXrayFrame);
+
+// ---------------------- Gamma nucleus simulation -------------------------
+const gammaCtx = gammaCanvas ? gammaCanvas.getContext('2d') : null;
+let gammaDpr = window.devicePixelRatio || 1;
+let gammaLast = performance.now();
+let gammaParticles = [];
+let gammaWaves = [];
+let nucleonCount = 120; // default large nucleus
+let gammaPlaying = true;
+
+function resizeGammaCanvas() {
+  if (!gammaCanvas || !gammaCtx) return;
+  const parent = gammaCanvas.parentElement;
+  const rect = parent ? parent.getBoundingClientRect() : gammaCanvas.getBoundingClientRect();
+  const width = rect.width || 400;
+  const height = rect.height || 300;
+  gammaCanvas.width = Math.max(200, width) * gammaDpr;
+  gammaCanvas.height = Math.max(160, height) * gammaDpr;
+  gammaCtx.setTransform(gammaDpr, 0, 0, gammaDpr, 0, 0);
+}
+
+function initNucleus(count) {
+  gammaParticles = [];
+  // approximate proton fraction ~ half (not physical exact)
+  for (let i = 0; i < count; i++) {
+    const isProton = i < Math.round(count * 0.48);
+    // place in layers: radius scaled by random, keep particles inside nucleus radius
+    const layer = Math.floor(Math.sqrt(Math.random()) * 3); // 0..2
+    const baseR = 18 + layer * 10 + (Math.random() * 6 - 3);
+    gammaParticles.push({
+      type: isProton ? 'p' : 'n',
+      baseR,
+      angle: Math.random() * Math.PI * 2,
+      phase: Math.random() * Math.PI * 2,
+      vibrAmp: 1 + Math.random() * 2.6, // px amplitude
+      vibrFreq: 2 + Math.random() * 6,
+    });
+  }
+}
+
+function emitGammaPulse() {
+  gammaWaves.push({ age: 0, life: 0.9 + Math.random() * 0.6, color: '#d8b4fe' });
+  // small flash at centre (push a short-lived bright ring)
+}
+
+function drawGammaFrame(now) {
+  const dt = (now - gammaLast) / 1000;
+  gammaLast = now;
+  if (!gammaCanvas || !gammaCtx) {
+    requestAnimationFrame(drawGammaFrame);
+    return;
+  }
+
+  if (!gammaPlaying) {
+    requestAnimationFrame(drawGammaFrame);
+    return;
+  }
+
+  const w = gammaCanvas.width / gammaDpr;
+  const h = gammaCanvas.height / gammaDpr;
+  gammaCtx.clearRect(0, 0, w, h);
+  const cx = w / 2;
+  const cy = h / 2;
+  gammaCtx.save();
+  gammaCtx.translate(cx, cy);
+
+  // nucleus core background
+  const nucleusR = Math.min(w, h) * 0.18;
+  const g = gammaCtx.createRadialGradient(0, 0, 0, 0, 0, nucleusR * 1.6);
+  g.addColorStop(0, '#fff7ff');
+  g.addColorStop(0.18, '#f3e8ff');
+  g.addColorStop(0.6, '#2b0633');
+  gammaCtx.fillStyle = g;
+  gammaCtx.beginPath();
+  gammaCtx.arc(0, 0, nucleusR * 1.15, 0, Math.PI * 2);
+  gammaCtx.fill();
+
+  // update and draw small gamma waves
+  gammaWaves = gammaWaves.filter(wv => wv.age < wv.life);
+  gammaWaves.forEach((wv) => {
+    wv.age += dt;
+    const p = wv.age / wv.life;
+    const maxR = Math.min(w, h) * 0.9;
+    const r = nucleusR * 0.6 + p * maxR;
+    const alpha = Math.max(0, 1 - p);
+    gammaCtx.strokeStyle = `rgba(196, 181, 253, ${alpha.toFixed(3)})`;
+    gammaCtx.lineWidth = 2 + 2 * (1 - p);
+    gammaCtx.beginPath();
+    gammaCtx.arc(0, 0, r, 0, Math.PI * 2);
+    gammaCtx.stroke();
+    // short radial flashes to indicate high energy
+    if (p < 0.25) {
+      gammaCtx.save();
+      gammaCtx.globalAlpha = 0.7 * (1 - p * 3);
+      gammaCtx.strokeStyle = `rgba(255,255,255,${(0.6 * (1 - p)).toFixed(2)})`;
+      gammaCtx.lineWidth = 1.6;
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + now * 0.002 * (i + 1);
+        gammaCtx.beginPath();
+        gammaCtx.moveTo(Math.cos(a) * (nucleusR * 0.6), Math.sin(a) * (nucleusR * 0.6));
+        gammaCtx.lineTo(Math.cos(a) * (nucleusR * 0.6 + r * 0.06), Math.sin(a) * (nucleusR * 0.6 + r * 0.06));
+        gammaCtx.stroke();
+      }
+      gammaCtx.restore();
+    }
+  });
+
+  // animate nucleons
+  let totalVib = 0;
+  gammaParticles.forEach((p, idx) => {
+    p.phase += dt * p.vibrFreq;
+    const vib = Math.sin(p.phase) * p.vibrAmp;
+    totalVib += Math.abs(vib);
+    const r = p.baseR + vib + nucleusR * 0.18;
+    const x = Math.cos(p.angle + now * 0.0006 * (idx % 6 + 1)) * r;
+    const y = Math.sin(p.angle + now * 0.0006 * (idx % 7 + 1)) * r;
+
+    // draw glow
+    const glow = gammaCtx.createRadialGradient(x, y, 0, x, y, 12);
+    if (p.type === 'p') {
+      glow.addColorStop(0, 'rgba(255,160,122,0.95)');
+      glow.addColorStop(1, 'rgba(64,10,30,0)');
+    } else {
+      glow.addColorStop(0, 'rgba(200,200,210,0.85)');
+      glow.addColorStop(1, 'rgba(10,8,18,0)');
+    }
+    gammaCtx.fillStyle = glow;
+    gammaCtx.beginPath();
+    gammaCtx.arc(x, y, 10, 0, Math.PI * 2);
+    gammaCtx.fill();
+
+    // draw core circle
+    gammaCtx.fillStyle = p.type === 'p' ? '#ff6b6b' : '#cad5e0';
+    gammaCtx.beginPath();
+    gammaCtx.arc(x, y, 4.8, 0, Math.PI * 2);
+    gammaCtx.fill();
+  });
+
+  // decide whether to emit a gamma pulse: if overall vibrational energy spikes
+  const avgVib = totalVib / Math.max(1, gammaParticles.length);
+  if (avgVib > 1.8 && Math.random() < 0.18) {
+    emitGammaPulse();
+  } else if (Math.random() < 0.004) {
+    // occasional spontaneous emission for visual variety
+    emitGammaPulse();
+  }
+
+  gammaCtx.restore();
+  requestAnimationFrame(drawGammaFrame);
+}
+
+// initialize default nucleus
+initNucleus(nucleonCount);
+resizeGammaCanvas();
+requestAnimationFrame(drawGammaFrame);
 
 function triggerTransition(elementKey, mode) {
   const data = ELEMENT_DATA[elementKey];
@@ -935,6 +1093,41 @@ function showSimulation(kind) {
 
     if (typeof resizeXrayCanvas === "function") {
       requestAnimationFrame(() => resizeXrayCanvas());
+    }
+  } else if (kind === "gamma") {
+    if (gammaSimPanel) gammaSimPanel.hidden = false;
+
+    simTitleEl.textContent = "Gamma Radiation: Nuclear De‑excitation";
+    simSubtitleEl.textContent = "An excited nucleus relaxes by emitting very high-energy photons (gamma rays).";
+    // Controls: nucleon count and play/pause
+    simExtraEl.innerHTML = `
+      <label style="display:inline-flex;align-items:center;gap:8px;">
+        Nucleons
+        <input id="nucleonCount" type="range" min="20" max="240" step="4" value="${nucleonCount}" style="width:160px;" />
+      </label>
+      <span id="nucCountLabel">${nucleonCount}</span>
+      <button id="gammaPlay" class="pill-button" style="margin-left:10px;">Pause</button>
+    `;
+
+    const nSlider = document.getElementById('nucleonCount');
+    const nLabel = document.getElementById('nucCountLabel');
+    const playBtn = document.getElementById('gammaPlay');
+    if (nSlider && nLabel) {
+      nSlider.addEventListener('input', () => {
+        nucleonCount = Number(nSlider.value);
+        nLabel.textContent = String(nucleonCount);
+        initNucleus(nucleonCount);
+      });
+    }
+    if (playBtn) {
+      playBtn.addEventListener('click', () => {
+        gammaPlaying = !gammaPlaying;
+        playBtn.textContent = gammaPlaying ? 'Pause' : 'Play';
+      });
+    }
+
+    if (typeof resizeGammaCanvas === "function") {
+      requestAnimationFrame(() => resizeGammaCanvas());
     }
   } else {
     // Fallback for unimplemented sims (microwave, x-ray)
