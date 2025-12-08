@@ -808,6 +808,8 @@ function showSimulation(kind) {
       const r = knob.getBoundingClientRect();
       rectCenter = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
       knob.setPointerCapture(ev.pointerId);
+      // while dragging, ensure quick transform updates (disable snap transition)
+      if (knobFace) knobFace.style.transition = 'transform 32ms linear';
     });
 
     window.addEventListener('pointermove', (ev) => {
@@ -819,6 +821,55 @@ function showSimulation(kind) {
       if (!dragging) return;
       dragging = false;
       try { knob.releasePointerCapture(ev.pointerId); } catch (e) {}
+      // On release, snap to nearest station with a smooth snapping animation
+      const current = Number(knob.getAttribute('aria-valuenow') || 4);
+      const snapVal = clamp(current, minVal, maxVal);
+      if (knobFace) {
+        // use a pleasant ease-out snap
+        knobFace.style.transition = 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)';
+      }
+      setKnobValue(snapVal);
+      // restore quick transition after snap completes
+      setTimeout(() => {
+        if (knobFace) knobFace.style.transition = 'transform 40ms linear';
+      }, 260);
+    });
+
+    // Create tick marks and numeric labels around the knob (discrete steps)
+    requestAnimationFrame(() => {
+      if (!knob) return;
+      // avoid adding ticks repeatedly if showSimulation called multiple times
+      if (knob.querySelector('.knob-ticks')) return;
+      const ticks = document.createElement('div');
+      ticks.className = 'knob-ticks';
+      const steps = maxVal - minVal + 1;
+      // anchor measurements to the inner face when available so ticks line up
+      const faceRect = knobFace ? knobFace.getBoundingClientRect() : knob.getBoundingClientRect();
+      // radius from center to just outside the inner face
+      const radius = Math.max(14, faceRect.width / 2 + 8);
+      for (let i = 0; i < steps; i++) {
+        const val = minVal + i;
+        const angle = minAngle + (i / (steps - 1)) * (maxAngle - minAngle);
+
+        const tick = document.createElement('div');
+        tick.className = 'tick';
+        if (i === 0 || i === steps - 1) tick.classList.add('small');
+        // rotate then translate outward by radius (center of knob is origin)
+        tick.style.transform = `rotate(${angle}deg) translateY(-${radius}px)`;
+        ticks.appendChild(tick);
+
+        // label slightly further out; rotate back so it's upright
+        const label = document.createElement('div');
+        label.className = 'tick-label';
+        if (i === 0 || i === steps - 1) label.classList.add('small');
+        label.textContent = String(val);
+        // place label a bit beyond the tick
+        const labelRadius = radius + 12;
+        // rotate label into position, then translate outward, then counter-rotate so text stays upright
+        label.style.transform = `rotate(${angle}deg) translateY(-${labelRadius}px) rotate(${-angle}deg)`;
+        ticks.appendChild(label);
+      }
+      knob.appendChild(ticks);
     });
 
     // keyboard support
