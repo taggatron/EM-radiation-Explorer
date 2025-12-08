@@ -253,10 +253,22 @@ function drawRadioFrame(now) {
 
   // move receiver electron in its own DOM container to match incoming wave
   if (receiverElectronEl) {
+    // compute the instantaneous wave displacement at a point near the right
+    // side of the canvas (where a receiver would sit) so the DOM dot
+    // matches the canvas waveform timing and frequency.
     const receiverRect = receiverElectronEl.parentElement.getBoundingClientRect();
     const recvH = receiverRect.height;
-    const offset = Math.sin(radioPhase * 2) * (recvH * 0.25);
-    receiverElectronEl.style.transform = `translateY(${offset}px)`;
+    // pick a receiver X position near the right edge of the canvas
+    const receiverX = Math.min(w, antennaX + wavelength * 1.6); // some distance from antenna
+    const tRecv = (receiverX - antennaX) / wavelength; // cycles from antenna to receiver
+    const recvWave = Math.sin(tRecv * Math.PI * 2 - phaseOffset);
+    // map the wave value to a small vertical motion inside the receiver box
+    const maxTravel = Math.max(8, recvH * 0.25);
+    const offset = recvWave * maxTravel;
+    // Set a CSS variable instead of directly setting `transform` because
+    // the element's animation also modifies transform. Using a variable
+    // lets the keyframes include the translateY without overwriting it.
+    receiverElectronEl.style.setProperty('--recv-y', `${offset}px`);
   }
 
   requestAnimationFrame(drawRadioFrame);
